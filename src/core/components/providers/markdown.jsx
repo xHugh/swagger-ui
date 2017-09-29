@@ -1,24 +1,40 @@
-import React, { PropTypes } from "react"
-import Remarkable from "react-remarkable"
+import React from "react"
+import PropTypes from "prop-types"
+import Remarkable from "remarkable"
 import sanitize from "sanitize-html"
 
-const sanitizeOptions = {
-  textFilter: function(text) {
-    return text
-      .replace(/&quot;/g, "\"")
-  }
-}
-
 function Markdown({ source }) {
-  const sanitized = sanitize(source, sanitizeOptions)
-  return <Remarkable
-    options={{html: true, typographer: true, linkify: true, linkTarget: "_blank"}}
-    source={sanitized}
-    ></Remarkable>
+    const html = new Remarkable({
+        html: true,
+        typographer: true,
+        breaks: true,
+        linkify: true,
+        linkTarget: "_blank"
+    }).render(source)
+    const sanitized = sanitizer(html)
+
+    if ( !source || !html || !sanitized ) {
+        return null
+    }
+
+    return (
+        <div className="markdown" dangerouslySetInnerHTML={{ __html: sanitized }}></div>
+    )
 }
 
 Markdown.propTypes = {
-  source: PropTypes.string.isRequired
+    source: PropTypes.string.isRequired
 }
 
 export default Markdown
+
+const sanitizeOptions = {
+    allowedTags: sanitize.defaults.allowedTags.concat([ "img" ]),
+    textFilter: function(text) {
+        return text.replace(/&quot;/g, "\"")
+    }
+}
+
+export function sanitizer(str) {
+    return sanitize(str, sanitizeOptions)
+}

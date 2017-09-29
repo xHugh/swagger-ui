@@ -1,4 +1,5 @@
-import React, { PropTypes } from "react"
+import React from "react"
+import PropTypes from "prop-types"
 import { fromJS } from "immutable"
 import ImPropTypes from "react-immutable-proptypes"
 
@@ -14,7 +15,7 @@ class Path extends React.Component {
 
     return (
       <pre className="base-url">
-        [ Base url: {host}{basePath}]
+        [ Base URL: {host}{basePath} ]
       </pre>
     )
   }
@@ -87,12 +88,13 @@ export default class Info extends React.Component {
     const { url:externalDocsUrl, description:externalDocsDescription } = (externalDocs || fromJS({})).toJS()
 
     const Markdown = getComponent("Markdown")
+    const VersionStamp = getComponent("VersionStamp")
 
     return (
       <div className="info">
         <hgroup className="main">
           <h2 className="title" >{ title }
-            { version && <small><pre className="version"> { version } </pre></small> }
+            { version && <VersionStamp version={version}></VersionStamp> }
           </h2>
           { host || basePath ? <Path host={ host } basePath={ basePath } /> : null }
           { url && <a target="_blank" href={ url }><span className="url"> { url } </span></a> }

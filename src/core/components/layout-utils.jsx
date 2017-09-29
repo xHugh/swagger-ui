@@ -1,4 +1,5 @@
-import React, { PropTypes } from "react"
+import React from "react"
+import PropTypes from "prop-types"
 import OriCollapse from "react-collapse"
 
 function xclass(...args) {
@@ -128,7 +129,8 @@ export class Select extends React.Component {
     value: PropTypes.any,
     onChange: PropTypes.func,
     multiple: PropTypes.bool,
-    allowEmptyValue: PropTypes.bool
+    allowEmptyValue: PropTypes.bool,
+    className: PropTypes.string
   }
 
   static defaultProps = {
@@ -141,7 +143,7 @@ export class Select extends React.Component {
 
     let value
 
-    if (props.value !== undefined) {
+    if (props.value) {
       value = props.value
     } else {
       value = props.multiple ? [""] : ""
@@ -177,7 +179,7 @@ export class Select extends React.Component {
     let value = this.state.value.toJS ? this.state.value.toJS() : this.state.value
 
     return (
-      <select multiple={ multiple } value={ value } onChange={ this.onChange } >
+      <select className={this.props.className} multiple={ multiple } value={ value } onChange={ this.onChange } >
         { allowEmptyValue ? <option value="">--</option> : null }
         {
           allowedValues.map(function (item, key) {

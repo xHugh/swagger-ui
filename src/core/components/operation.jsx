@@ -1,11 +1,11 @@
-import React, { PropTypes } from "react"
-import shallowCompare from "react-addons-shallow-compare"
+import React, { PureComponent } from "react"
+import PropTypes from "prop-types"
 import { getList } from "core/utils"
 import * as CustomPropTypes from "core/proptypes"
 
 //import "less/opblock"
 
-export default class Operation extends React.Component {
+export default class Operation extends PureComponent {
   static propTypes = {
     path: PropTypes.string.isRequired,
     method: PropTypes.string.isRequired,
@@ -18,6 +18,7 @@ export default class Operation extends React.Component {
     allowTryItOut: PropTypes.bool,
 
     displayOperationId: PropTypes.bool,
+    displayRequestDuration: PropTypes.bool,
 
     response: PropTypes.object,
     request: PropTypes.object,
@@ -27,6 +28,7 @@ export default class Operation extends React.Component {
     authSelectors: PropTypes.object,
     specActions: PropTypes.object.isRequired,
     specSelectors: PropTypes.object.isRequired,
+    oas3Actions: PropTypes.object.isRequired,
     layoutActions: PropTypes.object.isRequired,
     layoutSelectors: PropTypes.object.isRequired,
     fn: PropTypes.object.isRequired,
@@ -38,6 +40,7 @@ export default class Operation extends React.Component {
     response: null,
     allowTryItOut: true,
     displayOperationId: false,
+    displayRequestDuration: false
   }
 
   constructor(props, context) {
@@ -68,10 +71,6 @@ export default class Operation extends React.Component {
       consumesValue = consumes && consumes.size ? consumes.first() : defaultContentType
       specActions.changeConsumesValue([path, method], consumesValue)
     }
-  }
-
-  shouldComponentUpdate(props, state) {
-    return shallowCompare(this, props, state)
   }
 
   toggleShown =() => {
@@ -112,13 +111,15 @@ export default class Operation extends React.Component {
       request,
       allowTryItOut,
       displayOperationId,
-
+      displayRequestDuration,
       fn,
       getComponent,
       specActions,
       specSelectors,
       authActions,
-      authSelectors
+      authSelectors,
+      getConfigs,
+      oas3Actions
     } = this.props
 
     let summary = operation.get("summary")
@@ -131,6 +132,7 @@ export default class Operation extends React.Component {
     let schemes = operation.get("schemes")
     let parameters = getList(operation, ["parameters"])
     let operationId = operation.get("__originalOperationId")
+    let operationScheme = specSelectors.operationScheme(path, method)
 
     const Responses = getComponent("responses")
     const Parameters = getComponent( "parameters" )
@@ -142,8 +144,12 @@ export default class Operation extends React.Component {
     const Markdown = getComponent( "Markdown" )
     const Schemes = getComponent( "schemes" )
 
+    const { deepLinking } = getConfigs()
+
+    const isDeepLinkingEnabled = deepLinking && deepLinking !== "false"
+
     // Merge in Live Response
-    if(response && response.size > 0) {
+    if(responses && response && response.size > 0) {
       let notDocumented = !responses.get(String(response.get("status")))
       response = response.set("notDocumented", notDocumented)
     }
@@ -153,13 +159,18 @@ export default class Operation extends React.Component {
     let onChangeKey = [ path, method ] // Used to add values to _this_ operation ( indexed by path and method )
 
     return (
-        <div className={deprecated ? "opblock opblock-deprecated" : shown ? `opblock opblock-${method} is-open` : `opblock opblock-${method}`} id={isShownKey} >
+        <div className={deprecated ? "opblock opblock-deprecated" : shown ? `opblock opblock-${method} is-open` : `opblock opblock-${method}`} id={isShownKey.join("-")} >
           <div className={`opblock-summary opblock-summary-${method}`} onClick={this.toggleShown} >
-            <span className="opblock-summary-method">{method.toUpperCase()}</span>
-            <span className={ deprecated ? "opblock-summary-path__deprecated" : "opblock-summary-path" } >
-              <span>{path}</span>
-              <JumpToPath path={jumpToKey} />
-            </span>
+              <span className="opblock-summary-method">{method.toUpperCase()}</span>
+              <span className={ deprecated ? "opblock-summary-path__deprecated" : "opblock-summary-path" } >
+              <a
+                className="nostyle"
+                onClick={isDeepLinkingEnabled ? (e) => e.preventDefault() : null}
+                href={isDeepLinkingEnabled ? `#/${isShownKey[1]}/${isShownKey[2]}` : null}>
+                <span>{path}</span>
+              </a>
+                <JumpToPath path={jumpToKey} />
+              </span>
 
             { !showSummary ? null :
                 <div className="opblock-summary-description">
@@ -177,7 +188,7 @@ export default class Operation extends React.Component {
             }
           </div>
 
-          <Collapse isOpened={shown} animated>
+          <Collapse isOpened={shown}>
             <div className="opblock-body">
               { deprecated && <h4 className="opblock-title_normal"> Warning: Deprecated</h4>}
               { description &&
@@ -192,13 +203,16 @@ export default class Operation extends React.Component {
                 <div className="opblock-external-docs-wrapper">
                   <h4 className="opblock-title_normal">Find more details</h4>
                   <div className="opblock-external-docs">
-                    <span className="opblock-external-docs__description">{ externalDocs.get("description") }</span>
+                    <span className="opblock-external-docs__description">
+                      <Markdown source={ externalDocs.get("description") } />
+                    </span>
                     <a className="opblock-external-docs__link" href={ externalDocs.get("url") }>{ externalDocs.get("url") }</a>
                   </div>
                 </div> : null
               }
               <Parameters
                 parameters={parameters}
+                operation={operation}
                 onChangeKey={onChangeKey}
                 onTryoutClick = { this.onTryoutClick }
                 onCancelClick = { this.onCancelClick }
@@ -210,13 +224,15 @@ export default class Operation extends React.Component {
                 specActions={ specActions }
                 specSelectors={ specSelectors }
                 pathMethod={ [path, method] }
+                getConfigs={ getConfigs }
               />
 
               {!tryItOutEnabled || !allowTryItOut ? null : schemes && schemes.size ? <div className="opblock-schemes">
                     <Schemes schemes={ schemes }
                              path={ path }
                              method={ method }
-                             specActions={ specActions }/>
+                             specActions={ specActions }
+                             currentScheme={ operationScheme } />
                   </div> : null
               }
 
@@ -250,11 +266,14 @@ export default class Operation extends React.Component {
                     request={ request }
                     tryItOutResponse={ response }
                     getComponent={ getComponent }
+                    getConfigs={ getConfigs }
                     specSelectors={ specSelectors }
+                    oas3Actions={oas3Actions}
                     specActions={ specActions }
                     produces={ produces }
                     producesValue={ operation.get("produces_value") }
                     pathMethod={ [path, method] }
+                    displayRequestDuration={ displayRequestDuration }
                     fn={fn} />
               }
             </div>
