@@ -1,6 +1,5 @@
 import React from "react"
 import PropTypes from "prop-types"
-import OriCollapse from "react-collapse"
 
 function xclass(...args) {
   return args.filter(a => !!a).join(" ").trim()
@@ -57,6 +56,9 @@ export class Col extends React.Component {
     let classesAr = []
 
     for (let device in DEVICES) {
+      if (!DEVICES.hasOwnProperty(device)) {
+        continue
+      }
       let deviceClass = DEVICES[device]
       if(device in this.props) {
         let val = this.props[device]
@@ -130,7 +132,8 @@ export class Select extends React.Component {
     onChange: PropTypes.func,
     multiple: PropTypes.bool,
     allowEmptyValue: PropTypes.bool,
-    className: PropTypes.string
+    className: PropTypes.string,
+    disabled: PropTypes.bool,
   }
 
   static defaultProps = {
@@ -174,16 +177,23 @@ export class Select extends React.Component {
     onChange && onChange(value)
   }
 
+  componentWillReceiveProps(nextProps) {
+    // TODO: this puts us in a weird area btwn un/controlled selection... review
+    if(nextProps.value !== this.props.value) {
+      this.setState({ value: nextProps.value })
+    }
+  }
+
   render(){
-    let { allowedValues, multiple, allowEmptyValue } = this.props
-    let value = this.state.value.toJS ? this.state.value.toJS() : this.state.value
+    let { allowedValues, multiple, allowEmptyValue, disabled } = this.props
+    let value = this.state.value?.toJS?.() || this.state.value
 
     return (
-      <select className={this.props.className} multiple={ multiple } value={ value } onChange={ this.onChange } >
+      <select className={this.props.className} multiple={ multiple } value={value} onChange={ this.onChange } disabled={disabled} >
         { allowEmptyValue ? <option value="">--</option> : null }
         {
           allowedValues.map(function (item, key) {
-            return <option key={ key } value={ String(item) }>{ item }</option>
+            return <option key={ key } value={ String(item) }>{ String(item) }</option>
           })
         }
       </select>
@@ -194,7 +204,7 @@ export class Select extends React.Component {
 export class Link extends React.Component {
 
   render() {
-    return <a {...this.props} className={xclass(this.props.className, "link")}/>
+    return <a {...this.props} rel="noopener noreferrer" className={xclass(this.props.className, "link")}/>
   }
 
 }
@@ -240,11 +250,9 @@ export class Collapse extends React.Component {
 
     children = isOpened ? children : null
     return (
-      <OriCollapse isOpened={isOpened}>
-        <NoMargin>
-          {children}
-        </NoMargin>
-      </OriCollapse>
+      <NoMargin>
+        {children}
+      </NoMargin>
     )
   }
 

@@ -1,26 +1,11 @@
 import reduce from "lodash/reduce"
-let request = require.context("./transformers/", true, /\.js$/)
-let errorTransformers = []
+import * as NotOfType from "./transformers/not-of-type"
+import * as ParameterOneOf from "./transformers/parameter-oneof"
 
-request.keys().forEach( function( key ){
-  if( key === "./hook.js" ) {
-    return
-  }
-
-  if( !key.match(/js$/) ) {
-    return
-  }
-
-  if( key.slice(2).indexOf("/") > -1) {
-    // skip files in subdirs
-    return
-  }
-
-  errorTransformers.push({
-    name: toTitleCase(key).replace(".js", "").replace("./", ""),
-    transform: request(key).transform
-  })
-})
+const errorTransformers = [
+  NotOfType,
+  ParameterOneOf
+]
 
 export default function transformErrors (errors, system) {
   let inputs = {
@@ -46,11 +31,4 @@ export default function transformErrors (errors, system) {
       return err
     })
 
-}
-
-function toTitleCase(str) {
-  return str
-    .split("-")
-    .map(substr => substr[0].toUpperCase() + substr.slice(1))
-    .join("")
 }
